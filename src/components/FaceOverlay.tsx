@@ -18,31 +18,37 @@ const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef, onFaceDetectionChan
   const [isMediaPipeLoaded, setIsMediaPipeLoaded] = useState<boolean>(false);
   const [lastDetectionTime, setLastDetectionTime] = useState<number>(0);
   const faceDetectionTimeout = 1000; // Consider no face after 1 second without detection
-  const eyebrowImage = useRef<HTMLImageElement | null>(null);
+  const faceOverlayImage = useRef<HTMLImageElement | null>(null);
   
   // Smoothing variables
   const smoothXRef = useRef<number>(0);
   const smoothYRef = useRef<number>(0);
+  const smoothWidthRef = useRef<number>(0);
   const smoothingFactor = 0.2;
   
   useEffect(() => {
-    // Preload the eyebrow image
+    // Preload the face overlay image
     const img = new Image();
     img.src = 'https://cdn.discordapp.com/attachments/1070225571541434431/1348154936839376896/eyebrow_mankus.png?ex=67ce6ea0&is=67cd1d20&hm=740d06006eeb610188444b0dfd97bc513691ad971f1bf05ee8f4072561e9da62&';
     img.onload = () => {
-      eyebrowImage.current = img;
+      faceOverlayImage.current = img;
     };
     
     return () => {
-      eyebrowImage.current = null;
+      faceOverlayImage.current = null;
     };
   }, []);
   
   // Function to smooth position and reduce jitter
-  const smoothPosition = (newX: number, newY: number) => {
+  const smoothPosition = (newX: number, newY: number, newWidth: number) => {
     smoothXRef.current = smoothXRef.current * (1 - smoothingFactor) + newX * smoothingFactor;
     smoothYRef.current = smoothYRef.current * (1 - smoothingFactor) + newY * smoothingFactor;
-    return { x: smoothXRef.current, y: smoothYRef.current };
+    smoothWidthRef.current = smoothWidthRef.current * (1 - smoothingFactor) + newWidth * smoothingFactor;
+    return { 
+      x: smoothXRef.current, 
+      y: smoothYRef.current,
+      width: smoothWidthRef.current
+    };
   };
   
   useEffect(() => {
@@ -166,57 +172,56 @@ const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef, onFaceDetectionChan
           // Get the landmarks
           const landmarks = results.multiFaceLandmarks[0];
           
-          // Get eyebrow landmarks (left and right)
-          const leftEyebrow = [landmarks[107], landmarks[105], landmarks[70]]; // Points along left eyebrow
-          const rightEyebrow = [landmarks[336], landmarks[334], landmarks[300]]; // Points along right eyebrow
+          // Find face bounding box to determine size and position
+          let minX = 1, minY = 1, maxX = 0, maxY = 0;
           
-          // Calculate center and width of eyebrows for image placement
-          const leftEyebrowCenter = {
-            x: leftEyebrow[1].x * canvasElement.width,
-            y: leftEyebrow[1].y * canvasElement.height
-          };
+          // Sample landmarks to find face bounds
+          // Using key face points to determine face boundaries
+          const keyPoints = [
+            10,  // forehead
+            152, // chin
+            234, // left ear
+            454  // right ear
+          ];
           
-          const rightEyebrowCenter = {
-            x: rightEyebrow[1].x * canvasElement.width,
-            y: rightEyebrow[1].y * canvasElement.height
-          };
+          keyPoints.forEach(point => {
+            const landmark = landmarks[point];
+            minX = Math.min(minX, landmark.x);
+            minY = Math.min(minY, landmark.y);
+            maxX = Math.max(maxX, landmark.x);
+            maxY = Math.max(maxY, landmark.y);
+          });
           
-          const eyebrowDistance = Math.sqrt(
-            Math.pow(rightEyebrowCenter.x - leftEyebrowCenter.x, 2) +
-            Math.pow(rightEyebrowCenter.y - leftEyebrowCenter.y, 2)
-          );
+          // Calculate face center and dimensions
+          const centerX = (minX + maxX) / 2;
+          const centerY = (minY + maxY) / 2;
+          const faceWidth = (maxX - minX) * canvasElement.width;
           
-          // Apply eyebrow image if loaded
-          if (eyebrowImage.current) {
-            // Draw the eyebrow image for left eyebrow
-            const leftSmoothPos = smoothPosition(leftEyebrowCenter.x, leftEyebrowCenter.y);
-            const eyebrowWidth = eyebrowDistance * 0.6; // Adjust size as needed
-            const eyebrowHeight = eyebrowWidth * 0.4; // Maintain aspect ratio
-            
-            // Draw left eyebrow
-            canvasCtx.drawImage(
-              eyebrowImage.current,
-              leftSmoothPos.x - eyebrowWidth/2,
-              leftSmoothPos.y - eyebrowHeight/2,
-              eyebrowWidth,
-              eyebrowHeight
+          // Scale up to cover the entire face plus some padding
+          const scaleFactor = 1.8;
+          const overlayWidth = faceWidth * scaleFactor;
+          
+          // Apply overlay image if loaded
+          if (faceOverlayImage.current) {
+            // Apply smoothing to reduce jitter
+            const smoothed = smoothPosition(
+              centerX * canvasElement.width, 
+              centerY * canvasElement.height,
+              overlayWidth
             );
             
-            // Draw right eyebrow (flipped horizontally)
-            const rightSmoothPos = smoothPosition(rightEyebrowCenter.x, rightEyebrowCenter.y);
-            canvasCtx.save();
-            canvasCtx.translate(rightSmoothPos.x, 0);
-            canvasCtx.scale(-1, 1); // Flip horizontally
-            canvasCtx.translate(-rightSmoothPos.x, 0);
+            // Calculate height based on image aspect ratio
+            const aspectRatio = faceOverlayImage.current.height / faceOverlayImage.current.width;
+            const overlayHeight = smoothed.width * aspectRatio;
             
+            // Draw face overlay centered on the face
             canvasCtx.drawImage(
-              eyebrowImage.current,
-              rightSmoothPos.x - eyebrowWidth/2,
-              rightSmoothPos.y - eyebrowHeight/2,
-              eyebrowWidth,
-              eyebrowHeight
+              faceOverlayImage.current,
+              smoothed.x - smoothed.width / 2,
+              smoothed.y - overlayHeight / 2,
+              smoothed.width,
+              overlayHeight
             );
-            canvasCtx.restore();
           }
         }
       });
