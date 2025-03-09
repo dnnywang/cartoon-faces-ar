@@ -1,14 +1,17 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as faceapi from 'face-api.js';
 
 interface FaceOverlayProps {
   videoRef: React.RefObject<HTMLVideoElement>;
+  onFaceDetectionChange?: (isFaceDetected: boolean) => void;
 }
 
-const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef }) => {
+const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef, onFaceDetectionChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isModelLoaded = useRef<boolean>(false);
+  const [lastDetectionTime, setLastDetectionTime] = useState<number>(0);
+  const faceDetectionTimeout = 1000; // Consider no face after 1 second without detection
   
   useEffect(() => {
     const loadModels = async () => {
@@ -53,6 +56,19 @@ const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef }) => {
     };
   }, []);
   
+  useEffect(() => {
+    // Check for face detection timeout
+    const checkFaceDetectionTimeout = setInterval(() => {
+      const currentTime = Date.now();
+      if (currentTime - lastDetectionTime > faceDetectionTimeout && lastDetectionTime !== 0) {
+        // No face detected for more than the timeout period
+        onFaceDetectionChange?.(false);
+      }
+    }, 300);
+
+    return () => clearInterval(checkFaceDetectionTimeout);
+  }, [lastDetectionTime, onFaceDetectionChange]);
+  
   const startFaceDetection = () => {
     if (!videoRef.current || !canvasRef.current || !isModelLoaded.current) {
       return;
@@ -89,6 +105,13 @@ const FaceOverlay: React.FC<FaceOverlayProps> = ({ videoRef }) => {
         
         // Resize detections to match display size
         const resizedDetections = faceapi.resizeResults(detections, displaySize);
+        
+        // Update face detection status
+        const isFaceDetected = resizedDetections.length > 0;
+        if (isFaceDetected) {
+          setLastDetectionTime(Date.now());
+          onFaceDetectionChange?.(true);
+        }
         
         // Clear the canvas
         const ctx = canvas.getContext('2d');

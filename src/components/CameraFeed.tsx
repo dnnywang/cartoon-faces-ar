@@ -3,12 +3,14 @@ import React, { useRef, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Camera, CameraOff } from 'lucide-react';
 import FaceOverlay from './FaceOverlay';
+import FaceDetectionIndicator from './FaceDetectionIndicator';
 
 const CameraFeed = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCamera, setHasCamera] = useState<boolean>(false);
   const [isPermissionGranted, setIsPermissionGranted] = useState<boolean | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [isFaceDetected, setIsFaceDetected] = useState<boolean>(false);
   
   useEffect(() => {
     // Check if the device has a camera
@@ -72,15 +74,22 @@ const CameraFeed = () => {
         stream.getTracks().forEach(track => track.stop());
         videoRef.current.srcObject = null;
         setIsCameraActive(false);
+        setIsFaceDetected(false);
       }
     } else {
       // Restart the camera
       await requestCameraAccess();
     }
   };
+
+  const handleFaceDetectionChange = (detected: boolean) => {
+    setIsFaceDetected(detected);
+  };
   
   return (
     <div className="flex flex-col items-center gap-6">
+      {isCameraActive && <FaceDetectionIndicator isFaceDetected={isFaceDetected} />}
+      
       <div className="camera-container relative rounded-xl bg-white p-2">
         {!hasCamera && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
@@ -112,7 +121,7 @@ const CameraFeed = () => {
           muted
         />
         
-        {isCameraActive && <FaceOverlay videoRef={videoRef} />}
+        {isCameraActive && <FaceOverlay videoRef={videoRef} onFaceDetectionChange={handleFaceDetectionChange} />}
       </div>
       
       {hasCamera && isPermissionGranted !== false && (
