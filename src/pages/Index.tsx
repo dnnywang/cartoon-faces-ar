@@ -4,7 +4,6 @@ import CameraFeed from '@/components/CameraFeed';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Instructions from '@/components/Instructions';
-import SketchfabEmbed from '@/components/SketchfabEmbed';
 import { Loader } from 'lucide-react';
 
 const Index = () => {
@@ -33,7 +32,6 @@ const Index = () => {
           <div className="max-w-4xl mx-auto">
             <Instructions />
             <CameraFeed />
-            <SketchfabEmbed />
           </div>
         )}
       </main>
