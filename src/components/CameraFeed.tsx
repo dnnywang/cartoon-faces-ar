@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { Camera, CameraOff } from 'lucide-react';
 import FaceOverlay from './FaceOverlay';
 
