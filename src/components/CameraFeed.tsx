@@ -90,7 +90,8 @@ const CameraFeed = () => {
     <div className="flex flex-col items-center gap-6">
       {isCameraActive && <FaceDetectionIndicator isFaceDetected={isFaceDetected} />}
       
-      <div className="camera-container relative rounded-xl bg-white p-2">
+      <div className="camera-container relative rounded-xl bg-white p-2 overflow-hidden" 
+           style={{ width: '100%', maxWidth: '640px', aspectRatio: '4/3' }}>
         {!hasCamera && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
             <CameraOff className="text-gray-400 w-16 h-16 mb-4" />
@@ -115,7 +116,7 @@ const CameraFeed = () => {
         
         <video 
           ref={videoRef}
-          className={`camera-feed ${!isCameraActive ? 'hidden' : ''}`}
+          className={`camera-feed w-full h-full object-cover ${!isCameraActive ? 'hidden' : ''}`}
           autoPlay
           playsInline
           muted
