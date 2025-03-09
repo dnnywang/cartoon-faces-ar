@@ -92,3 +92,17 @@
 #loading-spinner {
   @apply animate-bounce-light;
 }
+
+/* Ensure proper aspect ratio for 3D embed */
+.sketchfab-embed-wrapper iframe {
+  aspect-ratio: 16 / 9;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+/* Add responsive styles for smaller screens */
+@media (max-width: 640px) {
+  .sketchfab-embed-wrapper {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+}
